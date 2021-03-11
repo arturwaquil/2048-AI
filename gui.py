@@ -55,13 +55,15 @@ class GUI:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         sys.exit()
-                    if event.key == pygame.K_LEFT:
+                    elif event.key == pygame.K_n:
+                        self.game.new_game()
+                    elif event.key == pygame.K_LEFT:
                         game_status = self.game.step(Game2048.LEFT)
-                    if event.key == pygame.K_UP:
+                    elif event.key == pygame.K_UP:
                         game_status = self.game.step(Game2048.UP)
-                    if event.key == pygame.K_RIGHT:
+                    elif event.key == pygame.K_RIGHT:
                         game_status = self.game.step(Game2048.RIGHT)
-                    if event.key == pygame.K_DOWN:
+                    elif event.key == pygame.K_DOWN:
                         game_status = self.game.step(Game2048.DOWN)
 
             self.paint_current_state(self.game.current_state())

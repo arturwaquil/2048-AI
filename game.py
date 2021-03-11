@@ -15,8 +15,11 @@ class Game2048:
 
     def __init__(self, n):
         self.n = n
+        self.new_game()
+
+    def new_game(self):
         self.score = 0
-        self.board = np.zeros((n, n), int)
+        self.board = np.zeros((self.n, self.n), int)
 
         self.insert_random()
         self.insert_random()

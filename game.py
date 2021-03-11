@@ -6,9 +6,11 @@ class Game2048:
     GAME_ENDED = -1
 
     LEFT = 0
-    TOP = 1
+    UP = 1
     RIGHT = 2
-    BOTTOM = 3
+    DOWN = 3
+
+    last_move = "(none)"
 
     def __init__(self, n):
         self.n = n
@@ -34,6 +36,7 @@ class Game2048:
         board_changed = self.action(direction)
 
         if board_changed:
+            self.last_move = ["left", "up", "right", "down"][direction]
             if 0 not in self.board:
                 return self.GAME_ENDED
             self.insert_random()
@@ -74,7 +77,9 @@ class Game2048:
         return not (self.board == orig_board).all()
 
     def __str__(self):
-        return str(self.board)
+        return "\nSCORE: " + str(self.score) + \
+               "\nLAST MOVE: " + self.last_move + \
+               "\n" + str(self.board)
 
     ############ AUXILIARY FUNCTIONS ############
 
@@ -85,11 +90,3 @@ class Game2048:
     # 90% chance it's 2, 10% it's 4
     def two_or_four(self):
         return 2 if np.random.rand() > 0.1 else 4
-
-
-game = Game2048(2)
-print(game)
-game.step(Game2048.RIGHT)
-game.step(Game2048.LEFT)
-game.step(Game2048.TOP)
-game.step(Game2048.BOTTOM)

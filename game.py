@@ -22,14 +22,12 @@ class Game2048:
 
     # Insert new value in random position
     def insert_random(self):
-        y = self.rand()
-        x = self.rand()
+        while True:
+            tup = (int(np.random.rand()*self.n), int(np.random.rand()*self.n))
+            if self.board[tup] == 0:
+                break
 
-        while self.board[y, x] != 0:
-            y = self.rand()
-            x = self.rand()
-
-        self.board[y, x] = self.two_or_four()
+        self.board[tup] = 2 if np.random.rand() > 0.1 else 4
 
     # Perform action, check if lost, insert new value
     def step(self, direction):
@@ -80,13 +78,3 @@ class Game2048:
         return "\nSCORE: " + str(self.score) + \
                "\nLAST MOVE: " + self.last_move + \
                "\n" + str(self.board)
-
-    ############ AUXILIARY FUNCTIONS ############
-
-    # Random number in [0,n)
-    def rand(self):
-        return int(np.random.rand()*self.n)
-
-    # 90% chance it's 2, 10% it's 4
-    def two_or_four(self):
-        return 2 if np.random.rand() > 0.1 else 4

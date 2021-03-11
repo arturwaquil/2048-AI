@@ -1,4 +1,6 @@
 import sys
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "True"
 import pygame
 from game import Game2048
 

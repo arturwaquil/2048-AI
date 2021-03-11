@@ -7,16 +7,20 @@ from game import Game2048
 
 class GUI:
 
-    bg_gray = (185, 169, 157)
-    tile_gray = (205, 191, 179)
+    Colors = {
+        "light_gray": (205, 191, 179),
+        "medium_gray": (185, 169, 157),
+        "dark_gray": (119, 109, 101),
+        "white": (237, 226, 217),
+    }
 
     def __init__(self, n):
         pygame.init()
 
         self.n = n
-        self.size = (410, 410)
+        self.size = (100*n+10, 100*n+10)
         self.screen = pygame.display.set_mode(self.size)
-        self.screen.fill(self.bg_gray)
+        self.screen.fill(self.Colors["medium_gray"])
 
         self.game = Game2048(self.n)
         self.game_status = Game2048.IN_GAME
@@ -31,16 +35,12 @@ class GUI:
                         sys.exit()
                     if event.key == pygame.K_LEFT:
                         game_status = self.game.step(Game2048.LEFT)
-                        print("left")
                     if event.key == pygame.K_UP:
                         game_status = self.game.step(Game2048.UP)
-                        print("up")
                     if event.key == pygame.K_RIGHT:
                         game_status = self.game.step(Game2048.RIGHT)
-                        print("right")
                     if event.key == pygame.K_DOWN:
                         game_status = self.game.step(Game2048.DOWN)
-                        print("down")
 
             self.paint_current_state(self.game.current_state())
 
@@ -48,14 +48,27 @@ class GUI:
                 break
 
     def paint_current_state(self, state):
-        for i in range(self.n):
-            for j in range(self.n):
-                self.paint_tile((i, j))
+        _, board = state
 
-    def paint_tile(self, position):
+        for row in range(self.n):
+            for col in range(self.n):
+                self.paint_tile(board[row, col], (row, col))
+
+    def paint_tile(self, value, position):
         tile = pygame.Surface((90, 90))
-        tile.fill(self.tile_gray)
-        self.screen.blit(tile, (10 + 100*position[0], 10 + 100*position[1]))
+
+        screen_pos = (10 + 100*position[1], 10 + 100*position[0])
+
+        if value == 0:
+            tile.fill(self.Colors["light_gray"])
+            self.screen.blit(tile, screen_pos)
+        else:
+            tile.fill(self.Colors["white"])
+            font = pygame.font.Font(pygame.font.get_default_font(), 50)
+            label = font.render(str(value), True, self.Colors["dark_gray"])
+            self.screen.blit(tile, screen_pos)
+            self.screen.blit(label, screen_pos)
+        
         pygame.display.flip()
 
 

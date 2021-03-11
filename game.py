@@ -3,6 +3,7 @@ import numpy as np
 
 class Game2048:
 
+    IN_GAME = 0
     GAME_ENDED = -1
 
     LEFT = 0
@@ -38,6 +39,8 @@ class Game2048:
             if 0 not in self.board:
                 return self.GAME_ENDED
             self.insert_random()
+
+        return self.IN_GAME
 
     # Move the pieces to the direction and unify when needed. The 
     # movement is always done to the left, so in the other directions 

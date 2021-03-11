@@ -77,6 +77,9 @@ class Game2048:
 
         return not (self.board == orig_board).all()
 
+    def current_state(self):
+        return self.score, self.board
+
     def __str__(self):
         return "\nSCORE: " + str(self.score) + \
                "\nLAST MOVE: " + self.last_move + \

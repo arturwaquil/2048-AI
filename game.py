@@ -3,6 +3,8 @@ import numpy as np
 
 class Game2048:
 
+    GAME_ENDED = -1
+
     LEFT = 0
     TOP = 1
     RIGHT = 2
@@ -29,18 +31,18 @@ class Game2048:
 
     # Perform action, check if lost, insert new value
     def step(self, direction):
-        self.action(direction)
+        board_changed = self.action(direction)
 
-        if 0 not in self.board:
-            self.end_game()
-
-        self.insert_random()
-        print(self)
+        if board_changed:
+            if 0 not in self.board:
+                return self.GAME_ENDED
+            self.insert_random()
 
     # Move the pieces to the direction and unify when needed. The 
     # movement is always done to the left, so in the other directions 
     # the board is rotated and de-rotated.
     def action(self, direction):
+        orig_board = self.board.copy()
         self.board = np.rot90(self.board, direction)
 
         for row in range(self.n):
@@ -69,15 +71,12 @@ class Game2048:
 
         self.board = np.rot90(self.board, -direction)
 
-    # Finish execution
-
-    def end_game(self):
-        pass
+        return not (self.board == orig_board).all()
 
     def __str__(self):
         return str(self.board)
 
-    # AUXILIARY FUNCTIONS
+    ############ AUXILIARY FUNCTIONS ############
 
     # Random number in [0,n)
     def rand(self):

@@ -18,7 +18,16 @@ class GUI:
         pygame.init()
 
         self.n = n
-        self.size = (100*n+10, 100*n+10)
+        
+        pygame.display.set_caption("2048")
+
+        self.tile_side = 100
+        self.margin = 10
+        self.score_board_height = 40
+        self.width = self.tile_side*n + self.margin
+        self.height = self.width + self.score_board_height
+        self.size = (self.width, self.height)
+        
         self.screen = pygame.display.set_mode(self.size)
         self.screen.fill(self.Colors["medium_gray"])
 
@@ -48,16 +57,28 @@ class GUI:
                 break
 
     def paint_current_state(self, state):
-        _, board = state
+        score, board = state
 
+        # Print score in the upper part of the window
+        score_space = pygame.Surface((self.width, self.score_board_height))
+        score_space.fill(self.Colors["medium_gray"])
+        self.screen.blit(score_space, (0,0))
+        font = pygame.font.Font(pygame.font.get_default_font(), self.score_board_height-self.margin)
+        label = font.render("SCORE: " + str(score), True, self.Colors["dark_gray"])
+        self.screen.blit(label, (self.margin,self.margin))
+        pygame.display.flip()
+
+        # Paint all tiles
         for row in range(self.n):
             for col in range(self.n):
                 self.paint_tile(board[row, col], (row, col))
 
     def paint_tile(self, value, position):
-        tile = pygame.Surface((90, 90))
+        tile = pygame.Surface((self.tile_side-self.margin, self.tile_side-self.margin))
 
-        screen_pos = (10 + 100*position[1], 10 + 100*position[0])
+        row_pos = self.margin + self.tile_side*position[0] + self.score_board_height
+        col_pos = self.margin + self.tile_side*position[1]
+        screen_pos = (col_pos, row_pos)
 
         if value == 0:
             tile.fill(self.Colors["light_gray"])

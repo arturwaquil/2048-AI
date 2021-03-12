@@ -9,6 +9,7 @@ from game import Game2048
 class GUI:
 
     Colors = {
+        "transparent_whitish": (238, 228, 218, 186),
         "gray_light": (205, 191, 179),
         "gray_medium": (185, 169, 157),
         "gray_dark": (119, 109, 101),
@@ -41,11 +42,11 @@ class GUI:
         # The game screen
         pygame.display.set_caption("2048")
         self.screen = pygame.display.set_mode(self.size)
-        self.screen.fill(self.Colors["gray_medium"])
 
         # Game core
         self.game = Game2048(self.n)
-        self.game_status = Game2048.IN_GAME
+
+        self.on_end_screen = False
 
     def run(self):
         while True:
@@ -58,21 +59,44 @@ class GUI:
                     elif event.key == pygame.K_n:
                         self.game.new_game()
                     elif event.key == pygame.K_LEFT:
-                        game_status = self.game.step(Game2048.LEFT)
+                        self.game.step(Game2048.LEFT)
                     elif event.key == pygame.K_UP:
-                        game_status = self.game.step(Game2048.UP)
+                        self.game.step(Game2048.UP)
                     elif event.key == pygame.K_RIGHT:
-                        game_status = self.game.step(Game2048.RIGHT)
+                        self.game.step(Game2048.RIGHT)
                     elif event.key == pygame.K_DOWN:
-                        game_status = self.game.step(Game2048.DOWN)
+                        self.game.step(Game2048.DOWN)
 
-            self.paint_current_state(self.game.current_state())
+            if self.game.in_game or not self.on_end_screen:
+                self.paint_current_state(self.game.current_state())
 
-            if self.game_status == Game2048.GAME_ENDED:
-                break
+            if not self.game.in_game:
+                self.paint_end_screen()
+
+    def paint_end_screen(self):
+        if not self.on_end_screen:
+            self.on_end_screen = True
+
+            end_screen = pygame.Surface(self.size, pygame.SRCALPHA)
+            end_screen.fill(self.Colors["transparent_whitish"])
+            self.screen.blit(end_screen, (0,0))
+
+            font = pygame.font.Font(pygame.font.get_default_font(), int(0.4*self.tile_side))
+            label = font.render("Game over!", True, self.Colors["gray_dark"])
+            label_rect = label.get_rect(center=(self.width/2,self.height/2))
+            self.screen.blit(label, label_rect)
+
+            font = pygame.font.Font(pygame.font.get_default_font(), int(0.2*self.tile_side))
+            label = font.render("Press 'n' to try again", True, self.Colors["gray_dark"])
+            label_rect = label.get_rect(center=(self.width/2,self.height/2+0.4*self.tile_side))
+            self.screen.blit(label, label_rect)
+
+            pygame.display.flip()
 
     def paint_current_state(self, state):
         score, board = state
+
+        self.screen.fill(self.Colors["gray_medium"])
 
         # Print score in the upper part of the window
         score_space = pygame.Surface((self.width, self.score_board_height))

@@ -3,9 +3,6 @@ import numpy as np
 
 class Game2048:
 
-    IN_GAME = 0
-    GAME_ENDED = -1
-
     LEFT = 0
     UP = 1
     RIGHT = 2
@@ -18,6 +15,7 @@ class Game2048:
         self.new_game()
 
     def new_game(self):
+        self.in_game = True
         self.score = 0
         self.board = np.zeros((self.n, self.n), int)
 
@@ -26,6 +24,8 @@ class Game2048:
 
     # Insert new value in random position
     def insert_random(self):
+        if 0 not in self.board: return
+
         while True:
             tup = (int(np.random.rand()*self.n), int(np.random.rand()*self.n))
             if self.board[tup] == 0:
@@ -35,15 +35,15 @@ class Game2048:
 
     # Perform action, check if lost, insert new value
     def step(self, direction):
+        if not self.in_game: return
+        
         board_changed = self.action(direction)
 
         if board_changed:
             self.last_move = ["left", "up", "right", "down"][direction]
-            if 0 not in self.board:
-                return self.GAME_ENDED
             self.insert_random()
-
-        return self.IN_GAME
+            if not self.moves_available():
+                self.in_game = False
 
     # Move the pieces to the direction and unify when needed. The 
     # movement is always done to the left, so in the other directions 
@@ -79,6 +79,26 @@ class Game2048:
         self.board = np.rot90(self.board, -direction)
 
         return not (self.board == orig_board).all()
+
+    def moves_available(self):
+        if 0 in self.board: return True
+
+        temp_board = np.zeros((self.n+2, self.n+2), int)
+        temp_board[1:-1,1:-1] = self.board
+
+        for x in range(self.n):
+            for y in range(self.n):
+                temp_x = x+1
+                temp_y = y+1
+
+                tile = temp_board[temp_y, temp_x]
+
+                if tile == temp_board[temp_y, temp_x-1]: return True    # left
+                if tile == temp_board[temp_y-1, temp_x]: return True    # up
+                if tile == temp_board[temp_y, temp_x+1]: return True    # right
+                if tile == temp_board[temp_y+1, temp_x]: return True    # down
+
+        return False
 
     def current_state(self):
         return self.score, self.board

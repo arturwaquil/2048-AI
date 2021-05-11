@@ -12,6 +12,7 @@ class Game2048:
 
     def __init__(self, n):
         self.n = n
+        self.seed()
         self.new_game()
 
     def new_game(self):
@@ -22,16 +23,20 @@ class Game2048:
         self.insert_random()
         self.insert_random()
 
+    def seed(self, seed=1):
+        self.rng = np.random.default_rng(seed)
+        return [seed]
+
     # Insert new value in random position
     def insert_random(self):
         if 0 not in self.board: return
 
         while True:
-            tup = (int(np.random.rand()*self.n), int(np.random.rand()*self.n))
+            tup = (int(self.rng.random()*self.n), int(self.rng.random()*self.n))
             if self.board[tup] == 0:
                 break
 
-        self.board[tup] = 2 if np.random.rand() > 0.1 else 4
+        self.board[tup] = 2 if self.rng.random() > 0.1 else 4
 
     # Perform action, check if lost, insert new value
     def step(self, direction):
@@ -44,6 +49,8 @@ class Game2048:
             self.insert_random()
             if not self.moves_available():
                 self.in_game = False
+        
+        return self.board, self.score, not self.in_game
 
     # Move the pieces to the direction and unify when needed. The 
     # movement is always done to the left, so in the other directions 

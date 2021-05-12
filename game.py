@@ -10,9 +10,9 @@ class Game2048:
 
     last_move = "(none)"
 
-    def __init__(self, n):
+    def __init__(self, n, seed=None):
         self.n = n
-        self.seed()
+        self.seed(seed)
         self.new_game()
 
     def new_game(self):
@@ -23,7 +23,7 @@ class Game2048:
         self.insert_random()
         self.insert_random()
 
-    def seed(self, seed=1):
+    def seed(self, seed=None):
         self.rng = np.random.default_rng(seed)
         return [seed]
 

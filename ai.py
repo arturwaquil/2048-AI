@@ -1,8 +1,10 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 from game import Game2048
+from gui import GUI
 
 
 game = Game2048(seed=1)
@@ -120,6 +122,7 @@ for i_episode in range(100):
 
         # Select action based on the model, and perform it in the game
         action = choose_action(model, observation)
+        # TODO: ignore unfeasible moves
         next_observation, reward, done = game.step(action)
         next_observation = preprocess_obs(next_observation)
         # TODO: Rethink how the reward is obtained. Maybe getting the score at each step
@@ -145,6 +148,8 @@ for i_episode in range(100):
                        observations = np.vstack(memory.observations),
                        actions = np.array(memory.actions),
                        discounted_rewards = discount_rewards(memory.rewards))
+
+            # TODO: save training checkpoints
             
             memory.clear()
             break
@@ -154,3 +159,20 @@ plt.plot(smoothed_reward, label='Smoothed rewards')
 plt.xlabel('Episodes')
 plt.legend()
 plt.show()
+
+
+########## Evaluate model ##########
+
+def run_model_on_gui(model):
+    gui = GUI(seed=1)
+    _, observation = game.current_state()
+
+    done = False
+
+    while not done:
+        action = choose_action(model, preprocess_obs(observation))
+        observation, reward, done = gui.game.step(action)
+        gui.update_screen()
+        time.sleep(0.2)
+
+run_model_on_gui(model)

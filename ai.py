@@ -5,9 +5,7 @@ import matplotlib.pyplot as plt
 from game import Game2048
 
 
-game = Game2048(4)
-game.seed(1)
-
+game = Game2048(seed=1)
 n_actions = 4   # Left, up, right, down
 
 

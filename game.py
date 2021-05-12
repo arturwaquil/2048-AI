@@ -10,7 +10,7 @@ class Game2048:
 
     last_move = "(none)"
 
-    def __init__(self, n, seed=None):
+    def __init__(self, n=4, seed=None):
         self.n = n
         self.seed(seed)
         self.new_game()

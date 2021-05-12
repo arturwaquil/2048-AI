@@ -109,7 +109,12 @@ model.build(input_shape=(1,16))
 # History of smoothed rewards to track progress
 smoothed_reward = []
 
-for i_episode in range(100):
+# Create checkpoints for training
+ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
+manager = tf.train.CheckpointManager(ckpt, "./training", max_to_keep=5)
+ckpt.restore(manager.latest_checkpoint)
+
+for episode in range(100):
 
     # Initialize new game, get initial observation
     game.new_game()
@@ -141,7 +146,7 @@ for i_episode in range(100):
             # better visualizing the increments on performance?
             total_reward = sum(memory.rewards)
             smoothed_reward = append_smoothed(smoothed_reward, total_reward)
-            print("episode", i_episode, total_reward)
+            print("Total reward in episode {}: {}".format(episode, total_reward))
             
             # Train the model using the stored memory
             train_step(model, optimizer, 
@@ -149,7 +154,11 @@ for i_episode in range(100):
                        actions = np.array(memory.actions),
                        discounted_rewards = discount_rewards(memory.rewards))
 
-            # TODO: save training checkpoints
+            # Save training checkpoints
+            ckpt.step.assign_add(1)
+            if int(ckpt.step) % 10 == 0:
+                save_path = manager.save()
+                print("Saved checkpoint for episode {}: {}".format(episode, save_path))
             
             memory.clear()
             break

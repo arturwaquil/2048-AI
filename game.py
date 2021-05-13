@@ -49,8 +49,9 @@ class Game2048:
             self.insert_random()
             if not self.moves_available():
                 self.in_game = False
+            return self.board, self.score, not self.in_game
         
-        return self.board, self.score, not self.in_game
+        return self.board, 0, not self.in_game
 
     # Move the pieces to the direction and unify when needed. The 
     # movement is always done to the left, so in the other directions 

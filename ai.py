@@ -13,7 +13,7 @@ n_actions = 4   # Left, up, right, down
 def create_model():
     # TODO: Add convolutional layers...
     return tf.keras.models.Sequential([
-        tf.keras.layers.Dense(units=32, activation="relu", input_shape=(1,16)),
+        tf.keras.layers.Dense(units=32, activation="relu"),
         tf.keras.layers.Dense(units=32, activation="relu"),
         tf.keras.layers.Dense(units=32, activation="relu"),
         tf.keras.layers.Dense(units=n_actions, activation=None)
@@ -92,6 +92,8 @@ def append_smoothed(smoothed, value, smoothing_factor=0.9):
 # Do all the training process
 def train(model, episodes=100):
 
+    model.build(input_shape=(1,16))
+
     game = Game2048(seed=1)
     memory = Memory()
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
@@ -160,6 +162,9 @@ def train(model, episodes=100):
 
 # Show model running on the game's GUI
 def run_model_on_gui(model, sleep=0.2):
+    
+    print("Running model on GUI... ", end="")
+
     gui = GUI(seed=1)
     _, observation = gui.game.current_state()
 
@@ -167,9 +172,13 @@ def run_model_on_gui(model, sleep=0.2):
 
     while not done:
         action = choose_action(model, preprocess_obs(observation))
-        observation, reward, done = gui.game.step(action)
+        observation, tmp_score, done = gui.game.step(action)
         gui.update_screen()
+        if tmp_score != 0:
+            score = tmp_score
         time.sleep(sleep)
+
+    print("Final score: {}".format(score))
 
 
 if __name__ == "__main__":

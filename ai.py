@@ -157,7 +157,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
     return model, smoothed_reward
 
 # Show model running on the game's GUI
-def run_model_on_gui(model, sleep=0.2):
+def run_model_on_gui(model, sleep=0.1):
     
     print("Running model on GUI... ", end="")
 
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     ckpt, manager = create_checkpoints(model, optimizer)
 
     # Restore latest saved checkpoint
-    ckpt.restore(manager.latest_checkpoint)    
+    # ckpt.restore(manager.latest_checkpoint)    
 
     # Execute the training process
     model, smoothed_reward = train(model, ckpt=ckpt, manager=manager)

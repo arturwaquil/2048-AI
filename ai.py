@@ -106,6 +106,8 @@ def train(model, episodes=100):
 
     for episode in range(episodes):
 
+        tic = time.time()
+
         # Initialize new game, get initial observation
         game.new_game()
         _, observation = game.current_state()
@@ -136,7 +138,8 @@ def train(model, episodes=100):
                 # better visualizing the increments on performance?
                 total_reward = sum(memory.rewards)
                 smoothed_reward = append_smoothed(smoothed_reward, total_reward)
-                print("Total reward in episode {}: {}".format(episode, total_reward))
+                elapsed = int(time.time() - tic)
+                print("Episode {}. Time elapsed: {}s. Total reward: {}".format(episode, elapsed, total_reward))
                 
                 # Train the model using the stored memory
                 train_step(model, optimizer, 

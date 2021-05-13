@@ -90,21 +90,16 @@ def append_smoothed(smoothed, value, smoothing_factor=0.9):
     return smoothed
 
 # Do all the training process
-def train(model, episodes=100):
-
-    model.build(input_shape=(1,16))
+def train(model, episodes=100, ckpt=None, manager=None):
 
     game = Game2048(seed=1)
     memory = Memory()
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
     # History of smoothed rewards to track progress
     smoothed_reward = [0]
 
-    # Create checkpoints for training
-    ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
-    manager = tf.train.CheckpointManager(ckpt, "./training", max_to_keep=5)
-    ckpt.restore(manager.latest_checkpoint)
+    # If ckpt and manager were passed, set flag to save training checkpoints
+    save_ckpts = ckpt is not None and manager is not None
 
     for episode in range(episodes):
 
@@ -149,11 +144,12 @@ def train(model, episodes=100):
                         actions = np.array(memory.actions),
                         discounted_rewards = discount_rewards(memory.rewards))
 
-                # Save training checkpoints
-                ckpt.step.assign_add(1)
-                if int(ckpt.step) % 10 == 0:
-                    save_path = manager.save()
-                    print("Saved checkpoint for episode {}: {}".format(episode, save_path))
+                # Save training checkpoint for every tenth episode
+                if save_ckpts:
+                    ckpt.step.assign_add(1)
+                    if int(ckpt.step) % 10 == 0:
+                        save_path = manager.save()
+                        print("Saved checkpoint for episode {}: {}".format(episode, save_path))
                 
                 memory.clear()
                 break
@@ -180,10 +176,28 @@ def run_model_on_gui(model, sleep=0.2):
 
     print("Final score: {}".format(score))
 
+# Create checkpoint-managing structures for training
+def create_checkpoints(model, optimizer):
+    ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
+    manager = tf.train.CheckpointManager(ckpt, "./training", max_to_keep=5)
+    return ckpt, manager
+
 
 if __name__ == "__main__":
 
-    model, smoothed_reward = train(create_model())
+    # Instantiate model and optimizer
+    model = create_model()
+    model.build(input_shape=(1,16))
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+
+    # Create checkpoint-managing structures
+    ckpt, manager = create_checkpoints(model, optimizer)
+
+    # Restore latest saved checkpoint
+    ckpt.restore(manager.latest_checkpoint)    
+
+    # Execute the training process
+    model, smoothed_reward = train(model, ckpt=ckpt, manager=manager)
 
     # Plot reward evolution
     plt.plot(smoothed_reward, label='Smoothed rewards')

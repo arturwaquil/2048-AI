@@ -99,13 +99,6 @@ def preprocess_obs(observation):
     # TODO: When convolutional layers are added, remove the flatten()
     return np.ma.log2(observation).filled(0).astype(np.float32).flatten()
 
-# Append value to list, applying a smoothing factor
-def append_smoothed(smoothed, value, smoothing_factor=0.9):
-    if len(smoothed)>0:
-        value = smoothing_factor*smoothed[-1] + (1-smoothing_factor)*value
-    smoothed.append( value )
-    return smoothed
-
 # Do all the training process
 def train(model, episodes=100, ckpt=None, manager=None):
 
@@ -113,7 +106,6 @@ def train(model, episodes=100, ckpt=None, manager=None):
     memory = Memory()
 
     # Track progress
-    smoothed_reward = [0]
     scores = []
 
     # If ckpt and manager were passed, set flag to save training checkpoints
@@ -156,10 +148,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
             # Train model at the end of each episode
             if done:
                 # Calculate total reward of the episode and store it in the history
-                # TODO: Understand the need of a _smoothed_ reward history. Is it only for
-                # better visualizing the increments on performance?
                 total_reward = sum(memory.rewards)
-                smoothed_reward = append_smoothed(smoothed_reward, total_reward)
 
                 scores.append(score)
                 
@@ -182,7 +171,13 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 memory.clear()
                 break
     
-    return model, smoothed_reward
+    # Plot reward evolution
+    plt.plot(scores, label='Scores')
+    plt.xlabel('Episodes')
+    plt.legend()
+    plt.show()
+
+    return model
 
 # Show model running on the game's GUI
 def run_model_on_gui(model, sleep=0.1):
@@ -231,12 +226,6 @@ if __name__ == "__main__":
 
     if args.train:
         # Execute the training process
-        model, smoothed_reward = train(model, ckpt=ckpt, manager=manager)
-
-        # Plot reward evolution
-        plt.plot(smoothed_reward, label='Smoothed rewards')
-        plt.xlabel('Episodes')
-        plt.legend()
-        plt.show()
+        model = train(model, ckpt=ckpt, manager=manager)
 
     run_model_on_gui(model, 0.005)

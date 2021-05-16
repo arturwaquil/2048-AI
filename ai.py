@@ -142,16 +142,22 @@ def train(model, episodes=100, ckpt=None, manager=None):
             # Select feasible action based on the model, and perform it in the game
             action = choose_action(model, observation, game.possible_moves())
 
-            next_observation, score, done = game.step(action)
+            next_observation, score, done, tiles_merged = game.step(action)
+
             # TODO: Rethink how the reward is obtained. Maybe getting the score at each step
             # is not the best strategy. Other possibilities are: getting the final score of
             # the game; getting the final sum of tiles; getting the difference between the
             # sum of tiles now and in previous step; or a mixture of the mentioned strategies.
             # Maybe use metrics from the preprocessed observations instead of the raw ones.
 
+            # # Need to experiment a bit more
+            # reward1 = min((score - old_score)/1024, 1)
+            # reward2 = min(tiles_merged/4, 1)
+            # reward = 0.7*reward1 + 0.3*reward2
+            reward = score - old_score
+
             next_observation = preprocess_obs(next_observation)
 
-            reward = score - old_score
             old_score = score
 
             memory.add_to_memory(observation, action, reward)
@@ -170,7 +176,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 highest_tiles.append(highest_tile)
 
                 elapsed = int(time.time() - tic)
-                print(episode, "{}s".format(elapsed), total_reward, score, highest_tile, "", *action_history, sep='\t')
+                print(episode, "{}s".format(elapsed), "{:.2f}".format(total_reward), score, highest_tile, "", *action_history, sep='\t')
 
                 # Train the model using the stored memory
                 train_step(model, optimizer,
@@ -222,7 +228,7 @@ def run_model_on_gui(model, sleep=0.1):
 
     while not done:
         action = choose_action(model, preprocess_obs(observation), gui.game.possible_moves())
-        observation, score, done = gui.game.step(action)
+        observation, score, done, _ = gui.game.step(action)
         gui.update_screen()
         time.sleep(sleep)
 

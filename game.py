@@ -42,7 +42,7 @@ class Game2048:
     def step(self, direction):
         if not self.in_game: return
         
-        board_changed = self.action(direction)
+        board_changed, tiles_merged = self.action(direction)
 
         if board_changed:
             self.last_move = ["left", "up", "right", "down"][direction]
@@ -50,7 +50,7 @@ class Game2048:
             if not self.moves_available():
                 self.in_game = False
         
-        return self.board, self.score, not self.in_game
+        return self.board, self.score, not self.in_game, tiles_merged
 
     # Move the pieces to the direction and unify when needed. The 
     # movement is always done to the left, so in the other directions 
@@ -58,6 +58,8 @@ class Game2048:
     def action(self, direction):
         orig_board = self.board.copy()
         self.board = np.rot90(self.board, direction)
+
+        tiles_merged = 0
 
         for row in range(self.n):
 
@@ -80,13 +82,14 @@ class Game2048:
                     self.score = self.score + 2*line[i]
                     new_index = new_index + 1
                     i = i + 2
+                    tiles_merged += 1
             
             self.board[row] = new_line
 
         self.board = np.rot90(self.board, -direction)
 
         # Return true if board changed
-        return (self.board != orig_board).any()
+        return (self.board != orig_board).any(), tiles_merged
     
     # Return a list of booleans indicating for each direction 
     # (LEFT, UP, RIGHT, DOWN) if it's possible to make a move
@@ -94,10 +97,10 @@ class Game2048:
         orig_board = self.board.copy()
         orig_score = self.score
 
-        left  = self.action(self.LEFT);  self.board = orig_board.copy()
-        up    = self.action(self.UP);    self.board = orig_board.copy()
-        right = self.action(self.RIGHT); self.board = orig_board.copy()
-        down  = self.action(self.DOWN);  self.board = orig_board.copy()
+        left, _  = self.action(self.LEFT);  self.board = orig_board.copy()
+        up, _    = self.action(self.UP);    self.board = orig_board.copy()
+        right, _ = self.action(self.RIGHT); self.board = orig_board.copy()
+        down, _  = self.action(self.DOWN);  self.board = orig_board.copy()
 
         self.score = orig_score
 

@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import argparse
 
 from game import Game2048
 from gui import GUI
@@ -175,6 +176,7 @@ def run_model_on_gui(model, sleep=0.1):
         time.sleep(sleep)
 
     print("Final score: {}".format(score))
+    time.sleep(1)
 
 # Create checkpoint-managing structures for training
 def create_checkpoints(model, optimizer):
@@ -185,6 +187,11 @@ def create_checkpoints(model, optimizer):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-r', '--restore', dest='restore', action='store_true')
+    parser.add_argument('-t', '--train', dest='train', action='store_true')
+    args = parser.parse_args()
+
     # Instantiate model and optimizer
     model = create_model()
     model.build(input_shape=(1,16))
@@ -193,16 +200,18 @@ if __name__ == "__main__":
     # Create checkpoint-managing structures
     ckpt, manager = create_checkpoints(model, optimizer)
 
-    # Restore latest saved checkpoint
-    # ckpt.restore(manager.latest_checkpoint)    
+    if args.restore:
+        # Restore latest saved checkpoint
+        ckpt.restore(manager.latest_checkpoint)
 
-    # Execute the training process
-    model, smoothed_reward = train(model, ckpt=ckpt, manager=manager)
+    if args.train:
+        # Execute the training process
+        model, smoothed_reward = train(model, ckpt=ckpt, manager=manager)
 
-    # Plot reward evolution
-    plt.plot(smoothed_reward, label='Smoothed rewards')
-    plt.xlabel('Episodes')
-    plt.legend()
-    plt.show()
+        # Plot reward evolution
+        plt.plot(smoothed_reward, label='Smoothed rewards')
+        plt.xlabel('Episodes')
+        plt.legend()
+        plt.show()
 
-    run_model_on_gui(model)
+    run_model_on_gui(model, 0.005)

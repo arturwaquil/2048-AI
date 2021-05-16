@@ -116,6 +116,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
 
     # Track progress
     scores = []
+    highest_tiles = []
 
     # If ckpt and manager were passed, set flag to save training checkpoints
     save_ckpts = ckpt is not None and manager is not None
@@ -123,7 +124,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
     for episode in range(episodes):
 
         if episode % 10 == 0:
-            print("Ep.", "Time", "Reward", "Score", "LEFT", "UP", "RIGHT", "DOWN", sep='\t')
+            print("\nEp.", "Time", "Reward", "Score", "High", "", "LEFT", "UP", "RIGHT", "DOWN\n", sep='\t')
 
         # Reinitialize game and progress-tracking variables
         tic = time.time()
@@ -165,8 +166,11 @@ def train(model, episodes=100, ckpt=None, manager=None):
 
                 scores.append(score)
 
+                highest_tile = int(2**np.max(observation))
+                highest_tiles.append(highest_tile)
+
                 elapsed = int(time.time() - tic)
-                print(episode, "{}s".format(elapsed), total_reward, score, *action_history, sep='\t')
+                print(episode, "{}s".format(elapsed), total_reward, score, highest_tile, "", *action_history, sep='\t')
 
                 # Train the model using the stored memory
                 train_step(model, optimizer,
@@ -177,24 +181,32 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 # Save training checkpoint for every tenth episode
                 if save_ckpts and (episode+1) % 10 == 0:
                     save_path = manager.save()
-                    print("Saved checkpoint for episode {}: {}\n".format(episode, save_path))
+                    # print("Saved checkpoint for episode {}: {}\n".format(episode, save_path))
 
                 memory.clear()
                 break
 
     big_elapsed = int(time.time() - big_tic)
-    print("Total training time: {}s\n".format(big_elapsed))
+    print("\nTotal training time: {}s\n".format(big_elapsed))
 
-    return model, scores
+    return model, [scores, highest_tiles]
 
 def moving_average(data, window, mode='valid'):
     return np.convolve(data, np.ones(window)/window, mode)
 
-def plot(scores):
-    plt.plot(scores, label='Scores', color='orange')
-    plt.plot(moving_average(np.array(scores), 10), label='Moving average', color='blue')
-    plt.xlabel('Episodes')
-    plt.legend()
+def plot(scores, highest_tiles):
+    # plt.figure()
+    _, axes = plt.subplots(1, 2)
+    
+    axes[0].plot(scores, label='Scores', color='orange')
+    axes[0].plot(moving_average(np.array(scores), 10), label='Moving average', color='blue')
+    axes[0].set_xlabel('Episodes')
+    axes[0].legend()
+
+    axes[1].bar(list(range(len(highest_tiles))), highest_tiles, label='Highest tiles')
+    axes[1].set_xlabel('Episodes')
+    axes[1].legend()
+
     plt.show()
 
 
@@ -241,6 +253,6 @@ if __name__ == "__main__":
     # Execute the training process
     if args.train:
         model, info = train(model, ckpt=ckpt, manager=manager, episodes=args.episodes)
-        plot(info)
+        plot(*info)
 
     run_model_on_gui(model, 0.005)

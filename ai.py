@@ -123,8 +123,6 @@ def train(model, episodes=100, ckpt=None, manager=None):
         memory.clear()
     
         action_history = [0,0,0,0]
-        unchanged_count = 0
-        changed_count = 0
 
         while True:
 
@@ -133,14 +131,14 @@ def train(model, episodes=100, ckpt=None, manager=None):
             # Select feasible action based on the model, and perform it in the game
             action = choose_action(model, observation, game.possible_moves())
 
-            next_observation, score, done, board_changed = game.step(action)
+            next_observation, score, done = game.step(action)
             # TODO: Rethink how the reward is obtained. Maybe getting the score at each step
             # is not the best strategy. Other possibilities are: getting the final score of
             # the game; getting the final sum of tiles; getting the difference between the
             # sum of tiles now and in previous step; or a mixture of the mentioned strategies.
             # Maybe use metrics from the preprocessed observations instead of the raw ones.
 
-            memory.add_to_memory(observation, action, reward)
+            memory.add_to_memory(observation, action, score)
             observation = next_observation
 
             action_history[action] += 1
@@ -191,7 +189,7 @@ def run_model_on_gui(model, sleep=0.1):
 
     while not done:
         action = choose_action(model, preprocess_obs(observation), gui.game.possible_moves())
-        observation, score, done, _ = gui.game.step(action)
+        observation, score, done = gui.game.step(action)
         gui.update_screen()
         time.sleep(sleep)
 

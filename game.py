@@ -50,7 +50,7 @@ class Game2048:
             if not self.moves_available():
                 self.in_game = False
         
-        return self.board, self.score, not self.in_game, board_changed
+        return self.board, self.score, not self.in_game
 
     # Move the pieces to the direction and unify when needed. The 
     # movement is always done to the left, so in the other directions 

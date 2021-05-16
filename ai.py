@@ -208,8 +208,9 @@ def create_checkpoints(model, optimizer):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--restore', dest='restore', action='store_true')
-    parser.add_argument('-t', '--train', dest='train', action='store_true')
+    parser.add_argument('-r', '--restore', dest='restore', action='store_true', help='Restore latest saved checkpoint')
+    parser.add_argument('-t', '--train', dest='train', action='store_true', help='Train model')
+    parser.add_argument('-e', '--episodes', type=int, default='100', help='Number of training episodes')
     args = parser.parse_args()
 
     # Instantiate model and optimizer
@@ -220,12 +221,12 @@ if __name__ == "__main__":
     # Create checkpoint-managing structures
     ckpt, manager = create_checkpoints(model, optimizer)
 
+    # Restore latest saved checkpoint
     if args.restore:
-        # Restore latest saved checkpoint
         ckpt.restore(manager.latest_checkpoint)
 
+    # Execute the training process
     if args.train:
-        # Execute the training process
-        model = train(model, ckpt=ckpt, manager=manager)
+        model = train(model, ckpt=ckpt, manager=manager, episodes=args.episodes)
 
     run_model_on_gui(model, 0.005)

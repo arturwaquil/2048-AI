@@ -28,9 +28,19 @@ def create_model():
 
 # Run model over an observation (or a batch of observations) and choose an action from
 # the categorical distribution defined by the log probabilities of each possible action.
-def choose_action(model, observation, single=True):
+# Impossible moves are disconsidered before the sampling.
+def choose_action(model, observation, possible_moves, single=True):
+
+    # Transform boolean list to binary list (True -> 0, False -> 1)
+    possible_moves_binary = [ 0 if value else 1 for value in possible_moves ]
+
     observation = np.expand_dims(observation, axis=0) if single else observation
     logits = model.predict(observation)
+
+    # Replace impossible actions' values with negative infinity (which, in the logits,
+    # corresponds to a null probability).
+    logits = np.ma.masked_array(logits, mask=possible_moves_binary).filled(-np.inf)
+
     action = tf.random.categorical(logits, num_samples=1).numpy().flatten()
     return action[0] if single else action
 
@@ -105,7 +115,6 @@ def train(model, episodes=100, ckpt=None, manager=None):
     # Track progress
     smoothed_reward = [0]
     scores = []
-    unchanged_proportion = []
 
     # If ckpt and manager were passed, set flag to save training checkpoints
     save_ckpts = ckpt is not None and manager is not None
@@ -113,7 +122,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
     for episode in range(episodes):
 
         if episode % 10 == 0:
-            print("Ep.", "Time", "Reward", "Score", "LEFT", "UP", "RIGHT", "DOWN", "Unch.", "Ch.", "Unch. %", sep='\t')
+            print("Ep.", "Time", "Reward", "Score", "LEFT", "UP", "RIGHT", "DOWN", sep='\t')
 
         # Reinitialize game and progress-tracking variables
         tic = time.time()
@@ -129,9 +138,9 @@ def train(model, episodes=100, ckpt=None, manager=None):
 
             observation = preprocess_obs(observation)
 
-            # Select action based on the model, and perform it in the game
-            action = choose_action(model, observation)
-            # TODO: ignore unfeasible moves
+            # Select feasible action based on the model, and perform it in the game
+            action = choose_action(model, observation, game.possible_moves())
+
             next_observation, score, done, board_changed = game.step(action)
             # TODO: Rethink how the reward is obtained. Maybe getting the score at each step
             # is not the best strategy. Other possibilities are: getting the final score of
@@ -144,11 +153,6 @@ def train(model, episodes=100, ckpt=None, manager=None):
 
             action_history[action] += 1
 
-            if board_changed:
-                changed_count += 1
-            else:
-                unchanged_count += 1
-
             # Train model at the end of each episode
             if done:
                 # Calculate total reward of the episode and store it in the history
@@ -158,12 +162,9 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 smoothed_reward = append_smoothed(smoothed_reward, total_reward)
 
                 scores.append(score)
-                unch_prop = 100 * unchanged_count/(unchanged_count+changed_count)
-                unchanged_proportion.append(unch_prop)
                 
                 elapsed = int(time.time() - tic)
-                print(episode, "{}s".format(elapsed), total_reward, score, *action_history, 
-                    unchanged_count, changed_count, "{:.2f}%".format(unch_prop), sep='\t')
+                print(episode, "{}s".format(elapsed), total_reward, score, *action_history, sep='\t')
                 
                 # Train the model using the stored memory
                 train_step(model, optimizer, 
@@ -194,11 +195,9 @@ def run_model_on_gui(model, sleep=0.1):
     done = False
 
     while not done:
-        action = choose_action(model, preprocess_obs(observation))
-        observation, tmp_score, done = gui.game.step(action)
+        action = choose_action(model, preprocess_obs(observation), gui.game.possible_moves())
+        observation, score, done, _ = gui.game.step(action)
         gui.update_screen()
-        if tmp_score != 0:
-            score = tmp_score
         time.sleep(sleep)
 
     print("Final score: {}".format(score))

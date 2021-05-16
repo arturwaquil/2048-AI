@@ -49,9 +49,8 @@ class Game2048:
             self.insert_random()
             if not self.moves_available():
                 self.in_game = False
-            return self.board, self.score, not self.in_game
         
-        return self.board, 0, not self.in_game
+        return self.board, self.score, not self.in_game, board_changed
 
     # Move the pieces to the direction and unify when needed. The 
     # movement is always done to the left, so in the other directions 
@@ -86,7 +85,20 @@ class Game2048:
 
         self.board = np.rot90(self.board, -direction)
 
-        return not (self.board == orig_board).all()
+        # Return true if board changed
+        return (self.board != orig_board).any()
+    
+    # Return a list of booleans indicating for each direction 
+    # (LEFT, UP, RIGHT, DOWN) if it's possible to make a move
+    def possible_moves(self):
+        orig_board = self.board.copy()
+
+        left  = self.action(self.LEFT);  self.board = orig_board.copy()
+        up    = self.action(self.UP);    self.board = orig_board.copy()
+        right = self.action(self.RIGHT); self.board = orig_board.copy()
+        down  = self.action(self.DOWN);  self.board = orig_board.copy()
+
+        return [left, up, right, down]
 
     def moves_available(self):
         if 0 in self.board: return True

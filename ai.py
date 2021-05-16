@@ -1,8 +1,14 @@
-import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import time
 import argparse
+
+# Hide TensorFlow debugging info
+# (https://github.com/tensorflow/tensorflow/issues/1258#issuecomment-267777946)
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL']='1'
+
+import tensorflow as tf
 
 from game import Game2048
 from gui import GUI
@@ -96,30 +102,37 @@ def train(model, episodes=100, ckpt=None, manager=None):
     game = Game2048(seed=1)
     memory = Memory()
 
-    # History of smoothed rewards to track progress
+    # Track progress
     smoothed_reward = [0]
+    scores = []
+    unchanged_proportion = []
 
     # If ckpt and manager were passed, set flag to save training checkpoints
     save_ckpts = ckpt is not None and manager is not None
 
     for episode in range(episodes):
 
-        tic = time.time()
+        if episode % 10 == 0:
+            print("Ep.", "Time", "Reward", "Score", "LEFT", "UP", "RIGHT", "DOWN", "Unch.", "Ch.", "Unch. %", sep='\t')
 
-        # Initialize new game, get initial observation
+        # Reinitialize game and progress-tracking variables
+        tic = time.time()
         game.new_game()
         _, observation = game.current_state()
-        observation = preprocess_obs(observation)
-
         memory.clear()
     
+        action_history = [0,0,0,0]
+        unchanged_count = 0
+        changed_count = 0
+
         while True:
+
+            observation = preprocess_obs(observation)
 
             # Select action based on the model, and perform it in the game
             action = choose_action(model, observation)
             # TODO: ignore unfeasible moves
-            next_observation, reward, done = game.step(action)
-            next_observation = preprocess_obs(next_observation)
+            next_observation, score, done, board_changed = game.step(action)
             # TODO: Rethink how the reward is obtained. Maybe getting the score at each step
             # is not the best strategy. Other possibilities are: getting the final score of
             # the game; getting the final sum of tiles; getting the difference between the
@@ -128,7 +141,14 @@ def train(model, episodes=100, ckpt=None, manager=None):
 
             memory.add_to_memory(observation, action, reward)
             observation = next_observation
-            
+
+            action_history[action] += 1
+
+            if board_changed:
+                changed_count += 1
+            else:
+                unchanged_count += 1
+
             # Train model at the end of each episode
             if done:
                 # Calculate total reward of the episode and store it in the history
@@ -136,8 +156,14 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 # better visualizing the increments on performance?
                 total_reward = sum(memory.rewards)
                 smoothed_reward = append_smoothed(smoothed_reward, total_reward)
+
+                scores.append(score)
+                unch_prop = 100 * unchanged_count/(unchanged_count+changed_count)
+                unchanged_proportion.append(unch_prop)
+                
                 elapsed = int(time.time() - tic)
-                print("Episode {}. Time elapsed: {}s. Total reward: {}".format(episode, elapsed, total_reward))
+                print(episode, "{}s".format(elapsed), total_reward, score, *action_history, 
+                    unchanged_count, changed_count, "{:.2f}%".format(unch_prop), sep='\t')
                 
                 # Train the model using the stored memory
                 train_step(model, optimizer, 
@@ -150,7 +176,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
                     ckpt.step.assign_add(1)
                     if int(ckpt.step) % 10 == 0:
                         save_path = manager.save()
-                        print("Saved checkpoint for episode {}: {}".format(episode, save_path))
+                        print("Saved checkpoint for episode {}: {}\n".format(episode, save_path))
                 
                 memory.clear()
                 break

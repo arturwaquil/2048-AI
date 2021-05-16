@@ -92,11 +92,14 @@ class Game2048:
     # (LEFT, UP, RIGHT, DOWN) if it's possible to make a move
     def possible_moves(self):
         orig_board = self.board.copy()
+        orig_score = self.score
 
         left  = self.action(self.LEFT);  self.board = orig_board.copy()
         up    = self.action(self.UP);    self.board = orig_board.copy()
         right = self.action(self.RIGHT); self.board = orig_board.copy()
         down  = self.action(self.DOWN);  self.board = orig_board.copy()
+
+        self.score = orig_score
 
         return [left, up, right, down]
 

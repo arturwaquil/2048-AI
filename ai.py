@@ -14,17 +14,21 @@ from game import Game2048
 from gui import GUI
 
 
-n_actions = 4   # Left, up, right, down
-
 # Define the core network architecture
 def create_model():
     # TODO: Add convolutional layers...
-    return tf.keras.models.Sequential([
-        tf.keras.layers.Dense(units=32, activation="relu"),
-        tf.keras.layers.Dense(units=32, activation="relu"),
-        tf.keras.layers.Dense(units=32, activation="relu"),
-        tf.keras.layers.Dense(units=n_actions, activation=None)
+
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Dense(units=64, activation="relu"),
+        tf.keras.layers.Dense(units=64, activation="relu"),
+        tf.keras.layers.Dense(units=64, activation="relu"),
+
+        # Output layer
+        tf.keras.layers.Dense(units=4, activation=None)
     ])
+
+    model.build(input_shape=(1,16))
+    return model
 
 # Run model over an observation (or a batch of observations) and choose an action from
 # the categorical distribution defined by the log probabilities of each possible action.
@@ -35,7 +39,10 @@ def choose_action(model, observation, possible_moves, single=True):
     possible_moves_binary = [ 0 if value else 1 for value in possible_moves ]
 
     observation = np.expand_dims(observation, axis=0) if single else observation
-    logits = model.predict(observation)
+
+    # If this function is used for processing a batch of observations, it will be more
+    # efficient to use model.predict() instead of model.__call__()
+    logits = model(observation)
 
     # Replace impossible actions' values with negative infinity (which, in the logits,
     # corresponds to a null probability).
@@ -44,24 +51,24 @@ def choose_action(model, observation, possible_moves, single=True):
     action = tf.random.categorical(logits, num_samples=1).numpy().flatten()
     return action[0] if single else action
 
-# Structure to save the history of each episode, 
+# Structure to save the history of each episode,
 # so that the model can train at the end of it
 class Memory:
     def __init__(self):
         self.clear()
-    
+
     def clear(self):
         self.observations = []
         self.actions = []
         self.rewards = []
 
-    def add_to_memory(self, new_observation, new_action, new_reward): 
+    def add_to_memory(self, new_observation, new_action, new_reward):
         self.observations.append(new_observation)
         self.actions.append(new_action)
         self.rewards.append(new_reward)
 
 # Compute return (normalized, discounted, cumulative rewards)
-def discount_rewards(rewards, gamma=0.95): 
+def discount_rewards(rewards, gamma=0.95):
 
     # Aux function to normalize array
     def normalize(x):
@@ -82,7 +89,7 @@ def discount_rewards(rewards, gamma=0.95):
 def train_step(model, optimizer, observations, actions, discounted_rewards):
 
     # Compute loss scaling each action's probability by the reward it resulted in
-    def compute_loss(logits, actions, rewards): 
+    def compute_loss(logits, actions, rewards):
         neg_logprob = tf.nn.sparse_softmax_cross_entropy_with_logits( logits=logits, labels=actions )
         loss = tf.reduce_mean( neg_logprob * rewards )
         return loss
@@ -102,6 +109,8 @@ def preprocess_obs(observation):
 # Do all the training process
 def train(model, episodes=100, ckpt=None, manager=None):
 
+    big_tic = time.time()
+
     game = Game2048(seed=1)
     memory = Memory()
 
@@ -120,13 +129,14 @@ def train(model, episodes=100, ckpt=None, manager=None):
         tic = time.time()
         game.new_game()
         _, observation = game.current_state()
+        observation = preprocess_obs(observation)
+
         memory.clear()
-    
+
         action_history = [0,0,0,0]
+        old_score = 0
 
         while True:
-
-            observation = preprocess_obs(observation)
 
             # Select feasible action based on the model, and perform it in the game
             action = choose_action(model, observation, game.possible_moves())
@@ -138,7 +148,12 @@ def train(model, episodes=100, ckpt=None, manager=None):
             # sum of tiles now and in previous step; or a mixture of the mentioned strategies.
             # Maybe use metrics from the preprocessed observations instead of the raw ones.
 
-            memory.add_to_memory(observation, action, score)
+            next_observation = preprocess_obs(next_observation)
+
+            reward = score - old_score
+            old_score = score
+
+            memory.add_to_memory(observation, action, reward)
             observation = next_observation
 
             action_history[action] += 1
@@ -149,37 +164,43 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 total_reward = sum(memory.rewards)
 
                 scores.append(score)
-                
+
                 elapsed = int(time.time() - tic)
                 print(episode, "{}s".format(elapsed), total_reward, score, *action_history, sep='\t')
-                
+
                 # Train the model using the stored memory
-                train_step(model, optimizer, 
+                train_step(model, optimizer,
                         observations = np.vstack(memory.observations),
                         actions = np.array(memory.actions),
                         discounted_rewards = discount_rewards(memory.rewards))
 
                 # Save training checkpoint for every tenth episode
-                if save_ckpts:
-                    ckpt.step.assign_add(1)
-                    if int(ckpt.step) % 10 == 0:
-                        save_path = manager.save()
-                        print("Saved checkpoint for episode {}: {}\n".format(episode, save_path))
-                
+                if save_ckpts and (episode+1) % 10 == 0:
+                    save_path = manager.save()
+                    print("Saved checkpoint for episode {}: {}\n".format(episode, save_path))
+
                 memory.clear()
                 break
-    
-    # Plot reward evolution
-    plt.plot(scores, label='Scores')
+
+    big_elapsed = int(time.time() - big_tic)
+    print("Total training time: {}s\n".format(big_elapsed))
+
+    return model, scores
+
+def moving_average(data, window, mode='valid'):
+    return np.convolve(data, np.ones(window)/window, mode)
+
+def plot(scores):
+    plt.plot(scores, label='Scores', color='orange')
+    plt.plot(moving_average(np.array(scores), 10), label='Moving average', color='blue')
     plt.xlabel('Episodes')
     plt.legend()
     plt.show()
 
-    return model
 
 # Show model running on the game's GUI
 def run_model_on_gui(model, sleep=0.1):
-    
+
     print("Running model on GUI... ", end="")
 
     gui = GUI(seed=1)
@@ -196,12 +217,6 @@ def run_model_on_gui(model, sleep=0.1):
     print("Final score: {}".format(score))
     time.sleep(1)
 
-# Create checkpoint-managing structures for training
-def create_checkpoints(model, optimizer):
-    ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
-    manager = tf.train.CheckpointManager(ckpt, "./training", max_to_keep=5)
-    return ckpt, manager
-
 
 if __name__ == "__main__":
 
@@ -213,11 +228,11 @@ if __name__ == "__main__":
 
     # Instantiate model and optimizer
     model = create_model()
-    model.build(input_shape=(1,16))
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
     # Create checkpoint-managing structures
-    ckpt, manager = create_checkpoints(model, optimizer)
+    ckpt = tf.train.Checkpoint(optimizer=optimizer, model=model)
+    manager = tf.train.CheckpointManager(ckpt, "./training", max_to_keep=5)
 
     # Restore latest saved checkpoint
     if args.restore:
@@ -225,6 +240,7 @@ if __name__ == "__main__":
 
     # Execute the training process
     if args.train:
-        model = train(model, ckpt=ckpt, manager=manager, episodes=args.episodes)
+        model, info = train(model, ckpt=ckpt, manager=manager, episodes=args.episodes)
+        plot(info)
 
     run_model_on_gui(model, 0.005)

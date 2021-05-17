@@ -16,18 +16,28 @@ from gui import GUI
 
 # Define the core network architecture
 def create_model():
-    # TODO: Add convolutional layers...
 
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(units=64, activation="relu"),
-        tf.keras.layers.Dense(units=64, activation="relu"),
+
+        # The model receives a flat input and needs to reshape it to a 4x4 1-channel image
+        tf.keras.layers.InputLayer((16,)),
+        tf.keras.layers.Reshape((4,4,1)),
+
+        # Convolutional layers to extract positional knowledge
+        tf.keras.layers.Conv2D(filters=128, kernel_size=2, padding='same', activation="relu"),
+        tf.keras.layers.MaxPool2D(),
+        tf.keras.layers.Conv2D(filters=128, kernel_size=2, padding='same', activation="relu"),
+        tf.keras.layers.MaxPool2D(),
+
+        # Dense layers
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(units=256, activation="relu"),
         tf.keras.layers.Dense(units=64, activation="relu"),
 
         # Output layer
         tf.keras.layers.Dense(units=4, activation=None)
     ])
 
-    model.build(input_shape=(1,16))
     return model
 
 # Run model over an observation (or a batch of observations) and choose an action from
@@ -35,9 +45,11 @@ def create_model():
 # Impossible moves are disconsidered before the sampling.
 def choose_action(model, observation, possible_moves, single=True):
 
-    # Transform boolean list to binary list (True -> 0, False -> 1)
-    possible_moves_binary = [ 0 if value else 1 for value in possible_moves ]
+    # Mask of possible/impossible moves. Impossible moves
+    # must have value 1 to be masked in the masked array
+    possible_moves = 1 - possible_moves.astype(int)
 
+    possible_moves = np.expand_dims(possible_moves, axis=0) if single else possible_moves
     observation = np.expand_dims(observation, axis=0) if single else observation
 
     # If this function is used for processing a batch of observations, it will be more
@@ -46,7 +58,7 @@ def choose_action(model, observation, possible_moves, single=True):
 
     # Replace impossible actions' values with negative infinity (which, in the logits,
     # corresponds to a null probability).
-    logits = np.ma.masked_array(logits, mask=possible_moves_binary).filled(-np.inf)
+    logits = np.ma.masked_array(logits, mask=possible_moves).filled(-np.inf)
 
     action = tf.random.categorical(logits, num_samples=1).numpy().flatten()
     return action[0] if single else action
@@ -103,7 +115,6 @@ def train_step(model, optimizer, observations, actions, discounted_rewards):
 
 # Take the log2 of board with powers of 2.
 def preprocess_obs(observation):
-    # TODO: When convolutional layers are added, remove the flatten()
     return np.ma.log2(observation).filled(0).astype(np.float32).flatten()
 
 # Do all the training process
@@ -140,7 +151,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
         while True:
 
             # Select feasible action based on the model, and perform it in the game
-            action = choose_action(model, observation, game.possible_moves())
+            action = choose_action(model, observation, np.array(game.possible_moves()))
 
             next_observation, score, done, tiles_merged = game.step(action)
 
@@ -201,9 +212,8 @@ def moving_average(data, window, mode='valid'):
     return np.convolve(data, np.ones(window)/window, mode)
 
 def plot(scores, highest_tiles):
-    # plt.figure()
     _, axes = plt.subplots(1, 2)
-    
+
     axes[0].plot(scores, label='Scores', color='orange')
     axes[0].plot(moving_average(np.array(scores), 10), label='Moving average', color='blue')
     axes[0].set_xlabel('Episodes')
@@ -227,7 +237,7 @@ def run_model_on_gui(model, sleep=0.1):
     done = False
 
     while not done:
-        action = choose_action(model, preprocess_obs(observation), gui.game.possible_moves())
+        action = choose_action(model, preprocess_obs(observation), np.array(gui.game.possible_moves()))
         observation, score, done, _ = gui.game.step(action)
         gui.update_screen()
         time.sleep(sleep)

@@ -15,28 +15,36 @@ from gui import GUI
 
 
 # Define the core network architecture
-def create_model():
+def create_model(conv=False):
 
-    model = tf.keras.models.Sequential([
-
-        # The model receives a flat input and needs to reshape it to a 4x4 1-channel image
-        tf.keras.layers.InputLayer((16,)),
-        tf.keras.layers.Reshape((4,4,1)),
-
+    convolutional = [
         # Convolutional layers to extract positional knowledge
+        tf.keras.layers.Reshape((4,4,1)),
         tf.keras.layers.Conv2D(filters=128, kernel_size=2, padding='same', activation="relu"),
         tf.keras.layers.MaxPool2D(),
         tf.keras.layers.Conv2D(filters=128, kernel_size=2, padding='same', activation="relu"),
-        tf.keras.layers.MaxPool2D(),
+        tf.keras.layers.MaxPool2D()
+    ]
 
+    dense = [
         # Dense layers
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(units=256, activation="relu"),
+        tf.keras.layers.Dense(units=64, activation="relu"),
+        tf.keras.layers.Dense(units=64, activation="relu"),
+        tf.keras.layers.Dense(units=64, activation="relu"),
         tf.keras.layers.Dense(units=64, activation="relu"),
 
         # Output layer
         tf.keras.layers.Dense(units=4, activation=None)
-    ])
+    ]
+
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.layers.InputLayer((16,)))
+
+    if conv:
+        [ model.add(layer) for layer in convolutional ]
+    
+    [ model.add(layer) for layer in dense ]
 
     return model
 
@@ -264,10 +272,11 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--restore', dest='restore', action='store_true', help='Restore latest saved checkpoint')
     parser.add_argument('-t', '--train', dest='train', action='store_true', help='Train model')
     parser.add_argument('-e', '--episodes', type=int, default='100', help='Number of training episodes')
+    parser.add_argument('-c', '--convolutional', dest='conv', action='store_true', help='Set model to have convolutional layers')
     args = parser.parse_args()
 
     # Instantiate model and optimizer
-    model = create_model()
+    model = create_model(args.conv)
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
     # Create checkpoint-managing structures

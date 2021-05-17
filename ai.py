@@ -132,10 +132,15 @@ def train(model, episodes=100, ckpt=None, manager=None):
     # If ckpt and manager were passed, set flag to save training checkpoints
     save_ckpts = ckpt is not None and manager is not None
 
+    # Aux function to print training log
+    def print_data(data):
+        [ print((str(item) + '\t').expandtabs(15), end='') for item in data ]
+        print("")
+
     for episode in range(episodes):
 
         if episode % 10 == 0:
-            print("\nEp.", "Time", "Reward", "Score", "High", "", "LEFT", "UP", "RIGHT", "DOWN\n", sep='\t')
+            print_data(["\nEpisode", "Time", "Reward", "Score", "Highest", "  L   U   R   D\n"])
 
         # Reinitialize game and progress-tracking variables
         tic = time.time()
@@ -186,8 +191,10 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 highest_tile = int(2**np.max(observation))
                 highest_tiles.append(highest_tile)
 
-                elapsed = int(time.time() - tic)
-                print(episode, "{}s".format(elapsed), "{:.2f}".format(total_reward), score, highest_tile, "", *action_history, sep='\t')
+                elapsed_time = "{}s (+{}s)".format(int(time.time()-big_tic), int(time.time()-tic))
+                actions = "{:3d} {:3d} {:3d} {:3d}".format(*action_history)
+
+                print_data([episode, elapsed_time, total_reward, score, highest_tile, actions])
 
                 # Train the model using the stored memory
                 train_step(model, optimizer,
@@ -212,19 +219,24 @@ def moving_average(data, window, mode='valid'):
     return np.convolve(data, np.ones(window)/window, mode)
 
 def plot(scores, highest_tiles):
-    _, axes = plt.subplots(1, 2)
+    _, axes = plt.subplots(1, 3)
 
+    # Evolution of episode scores
     axes[0].plot(scores, label='Scores', color='orange')
     axes[0].plot(moving_average(np.array(scores), 10), label='Moving average', color='blue')
     axes[0].set_xlabel('Episodes')
     axes[0].legend()
 
+    # Evolution of highest tiles
     axes[1].bar(list(range(len(highest_tiles))), highest_tiles, label='Highest tiles')
     axes[1].set_xlabel('Episodes')
     axes[1].legend()
 
-    plt.show()
+    # Histogram of highest tiles considering all episodes
+    axes[2].hist(np.log2(highest_tiles), list(range(16)))
+    axes[2].set_xlabel('Highest tile (log2)')
 
+    plt.show()
 
 # Show model running on the game's GUI
 def run_model_on_gui(model, sleep=0.1):

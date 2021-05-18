@@ -204,7 +204,12 @@ def train(model, episodes=100, ckpt=None, manager=None):
 
                 steps_list.append(steps)
 
-                elapsed_time = "{:.1f}s (+{:.1f}s)".format(time.time()-big_tic, time.time()-tic)
+                time_since_start = time.time()-big_tic
+                if time_since_start < 100:
+                    elapsed_time = "{:.1f}s (+{:.1f}s)".format(time_since_start, time.time()-tic)
+                else:
+                    elapsed_time = "{}s (+{:.1f}s)".format(int(np.round(time_since_start)), time.time()-tic)
+
                 actions = "{:3d} {:3d} {:3d} {:3d}".format(*action_history)
 
                 print_data([episode, elapsed_time, total_reward, score, highest_tile, actions, steps])

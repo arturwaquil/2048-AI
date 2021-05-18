@@ -136,6 +136,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
     # Track progress
     scores = []
     highest_tiles = []
+    steps_list = []
 
     # If ckpt and manager were passed, set flag to save training checkpoints
     save_ckpts = ckpt is not None and manager is not None
@@ -148,7 +149,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
     for episode in range(episodes):
 
         if episode % 10 == 0:
-            print_data(["\nEpisode", "Time", "Reward", "Score", "Highest", "  L   U   R   D\n"])
+            print_data(["\nEpisode", "Time", "Reward", "Score", "Highest", "  L   U   R   D", "Steps\n"])
 
         # Reinitialize game and progress-tracking variables
         tic = time.time()
@@ -160,6 +161,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
 
         action_history = [0,0,0,0]
         old_score = 0
+        steps = 0
 
         while True:
 
@@ -188,6 +190,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
             observation = next_observation
 
             action_history[action] += 1
+            steps += 1
 
             # Train model at the end of each episode
             if done:
@@ -199,10 +202,12 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 highest_tile = int(2**np.max(observation))
                 highest_tiles.append(highest_tile)
 
-                elapsed_time = "{}s (+{}s)".format(int(time.time()-big_tic), int(time.time()-tic))
+                steps_list.append(steps)
+
+                elapsed_time = "{:.1f}s (+{:.1f}s)".format(time.time()-big_tic, time.time()-tic)
                 actions = "{:3d} {:3d} {:3d} {:3d}".format(*action_history)
 
-                print_data([episode, elapsed_time, total_reward, score, highest_tile, actions])
+                print_data([episode, elapsed_time, total_reward, score, highest_tile, actions, steps])
 
                 # Train the model using the stored memory
                 train_step(model, optimizer,
@@ -221,28 +226,34 @@ def train(model, episodes=100, ckpt=None, manager=None):
     big_elapsed = int(time.time() - big_tic)
     print("\nTotal training time: {}s\n".format(big_elapsed))
 
-    return model, [scores, highest_tiles]
+    return model, [scores, highest_tiles, steps_list]
 
 def moving_average(data, window, mode='valid'):
     return np.convolve(data, np.ones(window)/window, mode)
 
-def plot(scores, highest_tiles):
-    _, axes = plt.subplots(1, 3)
+def plot(scores, highest_tiles, steps):
+    _, axes = plt.subplots(2,2)
 
     # Evolution of episode scores
-    axes[0].plot(scores, label='Scores', color='orange')
-    axes[0].plot(moving_average(np.array(scores), 10), label='Moving average', color='blue')
-    axes[0].set_xlabel('Episodes')
-    axes[0].legend()
+    axes[0,0].plot(scores, label='Scores', color='orange')
+    axes[0,0].plot(moving_average(np.array(scores), 10), label='Moving average', color='blue')
+    axes[0,0].set_xlabel('Episodes')
+    axes[0,0].legend()
+
+    # Evolution of number of steps per episode
+    axes[0,1].plot(steps, label='Steps', color='orange')
+    axes[0,1].plot(moving_average(np.array(steps), 10), label='Moving average', color='blue')
+    axes[0,1].set_xlabel('Episodes')
+    axes[0,1].legend()
 
     # Evolution of highest tiles
-    axes[1].bar(list(range(len(highest_tiles))), highest_tiles, label='Highest tiles')
-    axes[1].set_xlabel('Episodes')
-    axes[1].legend()
+    axes[1,0].bar(list(range(len(highest_tiles))), highest_tiles, label='Highest tiles')
+    axes[1,0].set_xlabel('Episodes')
+    axes[1,0].legend()
 
     # Histogram of highest tiles considering all episodes
-    axes[2].hist(np.log2(highest_tiles), list(range(16)))
-    axes[2].set_xlabel('Highest tile (log2)')
+    axes[1,1].hist(np.log2(highest_tiles), list(range(16)))
+    axes[1,1].set_xlabel('Highest tile (log2)')
 
     plt.show()
 

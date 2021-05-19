@@ -44,7 +44,7 @@ class GUI:
         self.screen = pygame.display.set_mode(self.size)
 
         # Game core
-        self.game = Game2048(self.n, seed)
+        self.game = Game2048(self.n, seed, True)
 
         self.on_end_screen = False
 

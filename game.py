@@ -1,4 +1,5 @@
 import numpy as np
+import csv
 
 
 class Game2048:
@@ -10,8 +11,9 @@ class Game2048:
 
     last_move = "(none)"
 
-    def __init__(self, n=4, seed=None):
+    def __init__(self, n=4, seed=None, log=False):
         self.n = n
+        self.log = log
         self.seed(seed)
         self.new_game()
 
@@ -42,14 +44,20 @@ class Game2048:
     def step(self, direction):
         if not self.in_game: return
         
+        old_board = self.board.copy()
+
         board_changed, tiles_merged = self.action(direction)
 
         if board_changed:
-            self.last_move = ["left", "up", "right", "down"][direction]
+            self.last_move = ["L", "U", "R", "D"][direction]
             self.insert_random()
             if not self.moves_available():
                 self.in_game = False
-        
+            if self.log:
+                with open('log', 'a') as f:
+                    writer = csv.writer(f, delimiter='\t')
+                    writer.writerow([self.last_move, self.score, list(old_board.flatten())])
+
         return self.board, self.score, not self.in_game, tiles_merged
 
     # Move the pieces to the direction and unify when needed. The 

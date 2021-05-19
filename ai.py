@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import argparse
+import csv
+import ast
+import os
 
 # Hide TensorFlow debugging info
 # (https://github.com/tensorflow/tensorflow/issues/1258#issuecomment-267777946)
@@ -126,11 +129,10 @@ def preprocess_obs(observation):
     return np.ma.log2(observation).filled(0).astype(np.float32).flatten()
 
 # Do all the training process
-def train(model, episodes=100, ckpt=None, manager=None):
+def train(model, episodes=100, ckpt=None, manager=None, human_data=False):
 
     big_tic = time.time()
 
-    game = Game2048(seed=1)
     memory = Memory()
 
     # Track progress
@@ -146,16 +148,38 @@ def train(model, episodes=100, ckpt=None, manager=None):
         [ print((str(item) + '\t').expandtabs(15), end='') for item in data ]
         print("")
 
+    if human_data:
+        human_data_dir = 'human_data/top_left'
+        episodes = len(os.listdir(human_data_dir))
+    else:
+        game = Game2048(seed=1)
+
+
     for episode in range(episodes):
 
         if episode % 10 == 0:
             print_data(["\nEpisode", "Time", "Reward", "Score", "Highest", "  L   U   R   D", "Steps\n"])
 
-        # Reinitialize game and progress-tracking variables
         tic = time.time()
-        game.new_game()
-        _, observation = game.current_state()
-        observation = preprocess_obs(observation)
+
+        if human_data:
+            actions = []
+            scores_ = []
+            observations = []
+            with open(human_data_dir + '/log' + str(episode)) as f:
+                for row in csv.reader(f, delimiter='\t'):
+                    actions.append(['L', 'U', 'R', 'D'].index(row[0]))
+                    scores_.append(int(row[1]))
+                    observations.append(np.array(ast.literal_eval(row[2])))
+
+            i = 0
+            observation = preprocess_obs(observations[i])
+            old_zeros_count = 14
+        else:
+            # Reinitialize game
+            game.new_game()
+            _, observation = game.current_state()
+            observation = preprocess_obs(observation)
 
         memory.clear()
 
@@ -165,10 +189,21 @@ def train(model, episodes=100, ckpt=None, manager=None):
 
         while True:
 
-            # Select feasible action based on the model, and perform it in the game
-            action = choose_action(model, observation, np.array(game.possible_moves()))
+            if human_data:
+                action = actions[i]
+                next_observation = observations[i+1]
+                score = scores_[i]
+                done = i+2 == len(actions)
 
-            next_observation, score, done, tiles_merged = game.step(action)
+                zeros_count = (observation == 0).sum()
+                tiles_merged = zeros_count + 1 - old_zeros_count
+                old_zeros_count = zeros_count
+
+                i += 1
+            else:
+                # Select feasible action based on the model, and perform it in the game
+                action = choose_action(model, observation, np.array(game.possible_moves()))
+                next_observation, score, done, tiles_merged = game.step(action)
 
             # TODO: Rethink how the reward is obtained. Maybe getting the score at each step
             # is not the best strategy. Other possibilities are: getting the final score of
@@ -286,10 +321,15 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--restore', dest='restore', action='store_true', help='Restore latest saved checkpoint')
+    parser.add_argument('-d', '--human-data', dest='human', action='store_true', help='Train model with human data before RL')
     parser.add_argument('-t', '--train', dest='train', action='store_true', help='Train model')
     parser.add_argument('-e', '--episodes', type=int, default='100', help='Number of training episodes')
     parser.add_argument('-c', '--convolutional', dest='conv', action='store_true', help='Set model to have convolutional layers')
     args = parser.parse_args()
+
+    if args.restore and args.human:
+        print("Options --restore (-r) and --human-data (-h) are mutually exclusive.")
+        exit(1)
 
     # Instantiate model and optimizer
     model = create_model(args.conv)
@@ -302,6 +342,10 @@ if __name__ == "__main__":
     # Restore latest saved checkpoint
     if args.restore:
         ckpt.restore(manager.latest_checkpoint)
+
+    if args.human:
+        model, info = train(model, ckpt=ckpt, manager=manager, human_data=True)
+        plot(*info)
 
     # Execute the training process
     if args.train:

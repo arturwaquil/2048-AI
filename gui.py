@@ -4,6 +4,7 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "True"
 import pygame
 from game import Game2048
+import argparse
 
 
 class GUI:
@@ -27,7 +28,7 @@ class GUI:
         "black": (60, 58, 51)
     }
 
-    def __init__(self, n=4, seed=None):
+    def __init__(self, n=4, seed=None, log=False):
         pygame.init()
 
         # Info on dimensions
@@ -44,7 +45,7 @@ class GUI:
         self.screen = pygame.display.set_mode(self.size)
 
         # Game core
-        self.game = Game2048(self.n, seed, True)
+        self.game = Game2048(self.n, seed, log)
 
         self.on_end_screen = False
 
@@ -150,4 +151,8 @@ class GUI:
         else: return 30
 
 if __name__ == "__main__":
-    GUI().run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-l', '--log', dest='log', action='store_true', help='Log game data to file')
+    args = parser.parse_args()
+
+    GUI(log=args.log).run()

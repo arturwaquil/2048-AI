@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import argparse
+import csv
 
 # Hide TensorFlow debugging info
 # (https://github.com/tensorflow/tensorflow/issues/1258#issuecomment-267777946)
@@ -145,11 +146,13 @@ def train(model, episodes=100, ckpt=None, manager=None):
     def print_data(data):
         [ print((str(item) + '\t').expandtabs(15), end='') for item in data ]
         print("")
+        with open('training_log.csv', 'a', newline='') as f:
+            csv.writer(f, delimiter='\t').writerow(data)
 
     for episode in range(episodes):
 
-        if episode % 10 == 0:
-            print_data(["\nEpisode", "Time", "Reward", "Score", "Highest", "  L   U   R   D", "Steps\n"])
+        if episode % 100 == 0:
+            print_data(["Episode", "Time", "Reward", "Score", "Highest", "L", "U", "R", "D", "Steps"])
 
         # Reinitialize game and progress-tracking variables
         tic = time.time()
@@ -210,9 +213,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
                 else:
                     elapsed_time = "{}s (+{:.1f}s)".format(int(np.round(time_since_start)), time.time()-tic)
 
-                actions = "{:3d} {:3d} {:3d} {:3d}".format(*action_history)
-
-                print_data([episode, elapsed_time, total_reward, score, highest_tile, actions, steps])
+                print_data([episode, elapsed_time, total_reward, score, highest_tile, *action_history, steps])
 
                 # Train the model using the stored memory
                 train_step(model, optimizer,
@@ -221,7 +222,7 @@ def train(model, episodes=100, ckpt=None, manager=None):
                         discounted_rewards = discount_rewards(memory.rewards))
 
                 # Save training checkpoint for every tenth episode
-                if save_ckpts and (episode+1) % 10 == 0:
+                if save_ckpts and (episode+1) % 1000 == 0:
                     save_path = manager.save()
                     # print("Saved checkpoint for episode {}: {}\n".format(episode, save_path))
 
@@ -241,13 +242,13 @@ def plot(scores, highest_tiles, steps):
 
     # Evolution of episode scores
     axes[0,0].plot(scores, label='Scores', color='orange')
-    axes[0,0].plot(moving_average(np.array(scores), 10), label='Moving average', color='blue')
+    axes[0,0].plot(moving_average(np.array(scores), 1000), label='Moving average', color='blue')
     axes[0,0].set_xlabel('Episodes')
     axes[0,0].legend()
 
     # Evolution of number of steps per episode
     axes[0,1].plot(steps, label='Steps', color='orange')
-    axes[0,1].plot(moving_average(np.array(steps), 10), label='Moving average', color='blue')
+    axes[0,1].plot(moving_average(np.array(steps), 1000), label='Moving average', color='blue')
     axes[0,1].set_xlabel('Episodes')
     axes[0,1].legend()
 

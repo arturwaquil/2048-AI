@@ -290,7 +290,21 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--train', dest='train', action='store_true', help='Train model')
     parser.add_argument('-e', '--episodes', type=int, default='100', help='Number of training episodes')
     parser.add_argument('-c', '--convolutional', dest='conv', action='store_true', help='Set model to have convolutional layers')
+    parser.add_argument('-p', '--plot', dest='plot', action='store_true', help='Plot results from training log')
     args = parser.parse_args()
+
+    if args.plot:
+        scores = []
+        highest_tiles = []
+        steps = []
+        with open('trainig_log.csv', newline='') as f:
+            for row in csv.reader(f, delimiter='\t'):
+                if row[0] != "Episode":
+                    scores.append(int(row[3]))
+                    highest_tiles.append(int(row[4]))
+                    steps.append(int(row[9]))
+        plot(scores, highest_tiles, steps)
+        exit()
 
     # Instantiate model and optimizer
     model = create_model(args.conv)
